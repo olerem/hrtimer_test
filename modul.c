@@ -33,13 +33,17 @@ struct hrtimer_test_priv {
 
 static struct hrtimer_test_priv *hr_priv;
 
+static void hrtest_print_stats(struct hrtimer_test_priv *priv)
+{
+	pr_info("hrtimer test stats: pass: %u, fail %u\n", priv->pass, priv->fail);
+}
+
 static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 {
 	hrtimer_cancel(&priv->timer);
 
 	return 0;
 }
-
 
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
@@ -65,14 +69,11 @@ static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 	return 0;
 }
 
-
-
 static void hrtimer_test_tasklet_cb(unsigned long data)
 {
 	struct hrtimer_test_priv *priv = (struct hrtimer_test_priv *)data;
 
 	hrtest_start_timer(priv);
-	printk("%s\n", __func__);
 }
 
 static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
@@ -81,11 +82,9 @@ static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
 			container_of(timer, struct hrtimer_test_priv, timer);
 
 	tasklet_schedule(&priv->timer_tasklet);
-	printk("%s\n", __func__);
 
 	return HRTIMER_NORESTART;
 }
-
 
 static int hrtimer_test_init(void)
 {
