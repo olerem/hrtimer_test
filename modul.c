@@ -30,4 +30,7 @@ static void hrtimer_test_exit(void)
 
 module_init(hrtimer_test_init);
 module_exit(hrtimer_test_exit);
+
 MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Oleksij Rempel <linux@rempel-privat.de>");
+MODULE_DESCRIPTION("hrtimer test module");
