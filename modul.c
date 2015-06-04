@@ -23,6 +23,7 @@
 struct hrtimer_test_priv {
 	struct hrtimer timer;
 	struct tasklet_struct timer_tasklet;
+	struct timer_list stat_timer;
 
 	unsigned int pass;
 	unsigned int fail;
@@ -47,7 +48,7 @@ static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
-        unsigned int timeout_ns = 1000 * 1000 * 1000;
+        unsigned int timeout_ns = 20 * 1000;
 	ktime_t tout;
 
 	hrtest_stop_timer(priv);
@@ -86,6 +87,14 @@ static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+static void hrtimer_test_stat_cb(unsigned long data)
+{
+	struct hrtimer_test_priv *priv = (struct hrtimer_test_priv *)data;
+
+	hrtest_print_stats(priv);
+	mod_timer(&priv->stat_timer, jiffies + (120 * HZ));
+}
+
 static int hrtimer_test_init(void)
 {
 	struct hrtimer_test_priv *priv;
@@ -105,6 +114,10 @@ static int hrtimer_test_init(void)
 
 	hrtest_start_timer(priv);
 
+	setup_timer(&priv->stat_timer, hrtimer_test_stat_cb,
+			(unsigned long)priv);
+	mod_timer(&priv->stat_timer, jiffies + (1 * HZ));
+
 	return 0;
 }
 
@@ -112,6 +125,7 @@ static void hrtimer_test_exit(void)
 {
 	hrtest_stop_timer(hr_priv);
 	tasklet_kill(&hr_priv->timer_tasklet);
+	del_singleshot_timer_sync(&hr_priv->stat_timer);
 	kfree(hr_priv);
 	pr_info("%s\n",__func__);
 }
