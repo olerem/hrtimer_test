@@ -24,6 +24,7 @@ struct hrtimer_test_priv {
 	struct hrtimer timer;
 	struct tasklet_struct timer_tasklet;
 	struct timer_list stat_timer;
+	spinlock_t lock;
 
 	unsigned int pass;
 	unsigned int fail;
@@ -48,13 +49,14 @@ static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
-        unsigned int timeout_ns = 20 * 1000;
+        unsigned int timeout_ns = 40 * 1000;
 	ktime_t tout;
 
 	hrtest_stop_timer(priv);
 
 	tout = ktime_set(0, timeout_ns);
 
+	spin_lock(&priv->lock);
 	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL_PINNED);
 
         priv->hrexp = hrtimer_get_expires_ns(&priv->timer);
@@ -66,6 +68,8 @@ static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 			__func__, priv->hrprep, priv->hrexp, priv->pass, priv->fail);
 	} else
 		priv->pass++;
+
+	spin_unlock(&priv->lock);
 
 	return 0;
 }
@@ -105,6 +109,8 @@ static int hrtimer_test_init(void)
 		return -ENOMEM;
 
 	hr_priv = priv;
+
+	spin_lock_init(&priv->lock);
 
 	tasklet_init(&priv->timer_tasklet, hrtimer_test_tasklet_cb,
 			(unsigned long)priv);
