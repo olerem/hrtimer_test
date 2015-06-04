@@ -49,7 +49,7 @@ static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
-        unsigned int timeout_ns = 40 * 1000;
+        unsigned int timeout_ns = 50 * 1000;
 	ktime_t tout;
 
 	hrtest_stop_timer(priv);
