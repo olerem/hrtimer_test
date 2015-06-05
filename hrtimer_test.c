@@ -127,7 +127,7 @@ static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
 
 		if (timeout > priv->max_to)
 			priv->max_to = timeout;
-		else if ((timeout < priv->min_to))
+		else if (timeout < priv->min_to)
 			priv->min_to = timeout;
 	} else
 		priv->to_pass++;
@@ -156,6 +156,8 @@ static int hrtimer_test_init(void)
 
 	hr_priv = priv;
 
+	priv->min_to = timeout_us;
+	priv->max_to = timeout_us;
 	spin_lock_init(&priv->lock);
 
 	tasklet_init(&priv->timer_tasklet, hrtimer_test_tasklet_cb,
