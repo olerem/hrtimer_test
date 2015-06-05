@@ -13,6 +13,13 @@
  * You should have received a copy of the GNU General Public License along with
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*
+ * Notes:
+ * - this driver uses pinned timer, so results will be different on
+ *   on different starts. If cpu to wich the timer was pinned has less
+ *   interrupts, it will produce less errors.
+ */
+
 
 #include <linux/init.h>
 #include <linux/module.h>
