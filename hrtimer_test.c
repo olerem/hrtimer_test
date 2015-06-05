@@ -31,13 +31,28 @@ struct hrtimer_test_priv {
 
 	s64 hrexp;
 	s64 hrprep;
+
+	int min_to;
+	int max_to;
 };
 
 static struct hrtimer_test_priv *hr_priv;
 
+static int timeout_us = 30;
+static int latency_min_us = 10;
+static int latency_max_us = 100;
+
+module_param(timeout_us, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(timeout_us, "Timeout for hrtimer callback");
+module_param(latency_min_us, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(latency_min_us, "Minimal expexted trigger dealy");
+module_param(latency_max_us, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(latency_max_us, "Maximal expexted trigger dealy");
+
 static void hrtest_print_stats(struct hrtimer_test_priv *priv)
 {
 	pr_info("hrtimer test stats: pass: %u, fail %u\n", priv->pass, priv->fail);
+	pr_info("hrtimer test stats: max to: %i, min to: %i\n", priv->max_to, priv->min_to);
 }
 
 static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
@@ -49,13 +64,14 @@ static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
-        unsigned int timeout_ns = 30 * 1000;
 	ktime_t tout;
 
+	/* just in case it is still running */
 	hrtest_stop_timer(priv);
 
-	tout = ktime_set(0, timeout_ns);
+	tout = ktime_set(0, timeout_us * 1000);
 
+	/* we are in interrupt context, so just locking should be enough */
 	spin_lock(&priv->lock);
 	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL_PINNED);
 
@@ -85,6 +101,19 @@ static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
 {
 	struct hrtimer_test_priv *priv =
 			container_of(timer, struct hrtimer_test_priv, timer);
+	int timeout =
+		(int)(ktime_to_ns(hrtimer_cb_get_time(&priv->timer)) - priv->hrprep) / 1000;
+
+	if (timeout < (timeout_us - latency_min_us)
+			|| (timeout_us + latency_max_us) < timeout) {
+		pr_warn("warning! timeout is: %i, expected: %i min: %i, max: %i\n",
+			timeout, timeout_us, timeout_us - latency_min_us, timeout_us + latency_max_us);
+
+		if (timeout > priv->max_to)
+			priv->max_to = timeout;
+		else if ((timeout < priv->min_to))
+			priv->min_to = timeout;
+	}
 
 	tasklet_schedule(&priv->timer_tasklet);
 
