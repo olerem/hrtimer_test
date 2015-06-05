@@ -26,8 +26,14 @@ struct hrtimer_test_priv {
 	struct timer_list stat_timer;
 	spinlock_t lock;
 
+	/* start in the past counters */
 	unsigned int pass;
 	unsigned int fail;
+
+	/* counters to big timout difference */
+	unsigned int to_pass;
+	unsigned int to_min_count;
+	unsigned int to_max_count;
 
 	s64 hrexp;
 	s64 hrprep;
@@ -51,8 +57,9 @@ MODULE_PARM_DESC(latency_max_us, "Maximal expexted trigger dealy");
 
 static void hrtest_print_stats(struct hrtimer_test_priv *priv)
 {
-	pr_info("hrtimer test stats: pass: %u, fail %u\n", priv->pass, priv->fail);
-	pr_info("hrtimer test stats: max to: %i, min to: %i\n", priv->max_to, priv->min_to);
+	pr_info("hrtimer test stats: (start in the past) pass: %u, fail %u\n", priv->pass, priv->fail);
+	pr_info("hrtimer test stats: (big timout errata) max to: %i, min to: %i, max count: %u, min count %u, to pass %u\n",
+		priv->max_to, priv->min_to, priv->to_max_count, priv->to_min_count, priv->to_pass);
 }
 
 static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
@@ -106,14 +113,24 @@ static enum hrtimer_restart hrtimer_test_cb(struct hrtimer *timer)
 
 	if (timeout < (timeout_us - latency_min_us)
 			|| (timeout_us + latency_max_us) < timeout) {
+		int min = timeout_us - latency_min_us;
+		int max = timeout_us + latency_max_us;
+
 		pr_warn("warning! timeout is: %i, expected: %i min: %i, max: %i\n",
-			timeout, timeout_us, timeout_us - latency_min_us, timeout_us + latency_max_us);
+			timeout, timeout_us, min, max);
+
+
+		if (timeout < min)
+			priv->to_min_count++;
+		else
+			priv->to_max_count++;
 
 		if (timeout > priv->max_to)
 			priv->max_to = timeout;
 		else if ((timeout < priv->min_to))
 			priv->min_to = timeout;
-	}
+	} else
+		priv->to_pass++;
 
 	tasklet_schedule(&priv->timer_tasklet);
 
