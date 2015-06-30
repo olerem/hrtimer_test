@@ -87,7 +87,7 @@ static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 
 	/* we are in interrupt context, so just locking should be enough */
 	spin_lock(&priv->lock);
-	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL_PINNED);
+	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL);
 
         priv->hrexp = hrtimer_get_expires_ns(&priv->timer);
         priv->hrprep = ktime_to_ns(hrtimer_cb_get_time(&priv->timer));
