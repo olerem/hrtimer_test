@@ -79,6 +79,7 @@ static int hrtest_stop_timer(struct hrtimer_test_priv *priv)
 static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 {
 	ktime_t tout;
+	unsigned long flags;
 
 	/* just in case it is still running */
 	hrtest_stop_timer(priv);
@@ -86,8 +87,8 @@ static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 	tout = ktime_set(0, timeout_us * 1000);
 
 	/* we are in interrupt context, so just locking should be enough */
-	spin_lock(&priv->lock);
-	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL);
+	spin_lock_irqsave(&priv->lock, flags);
+	hrtimer_start(&priv->timer, tout, HRTIMER_MODE_REL_PINNED);
 
         priv->hrexp = hrtimer_get_expires_ns(&priv->timer);
         priv->hrprep = ktime_to_ns(hrtimer_cb_get_time(&priv->timer));
@@ -99,7 +100,7 @@ static int hrtest_start_timer(struct hrtimer_test_priv *priv)
 	} else
 		priv->pass++;
 
-	spin_unlock(&priv->lock);
+	spin_unlock_irqrestore(&priv->lock, flags);
 
 	return 0;
 }
